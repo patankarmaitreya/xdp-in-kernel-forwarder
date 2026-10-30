@@ -1,0 +1,19 @@
+
+# Compiled objects and build files
+*.o
+build/
+
+# Cursor
+.cursor/
+
+# VS Code
+.vscode/
+
+# Temporary files
+*.log
+*.swp
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
