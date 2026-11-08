@@ -4,6 +4,21 @@ A Linux packet-forwarding project built using **eBPF and XDP**, aiming to implem
 
 The project explores packet parsing, routing, header manipulation, and XDP-based forwarding, with plans to benchmark performance against a userspace C++ router.
 
+## Commands
+
+**Compile**
+
+- clang -Wall -Wextra -O2 -g -target bpf \
+    -I/usr/include/x86_64-linux-gnu \
+    -Iinclude \
+    -c xdp_pass.bpf.c \
+    -o xdp_pass.bpf.o
+
+**load Program**
+
+- sudo /usr/lib/linux-tools-6.8.0-147/bpftool \
+    prog load xdp_pass.bpf.o /sys/fs/bpf/xdp_eth_parse type xdp
+
 ## Current Progress
 
 **Sprint 1 — Completed**
