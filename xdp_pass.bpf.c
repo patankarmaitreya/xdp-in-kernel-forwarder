@@ -173,9 +173,6 @@ int xdp_pass(struct xdp_md *ctx)
         bpf_printk("TTL: %u -> %u", iph->ttl, ttl);
         bpf_printk("Checksum: 0x%x -> 0x%x",old_checksum, new_checksum);
 
-        //iph->ttl = ttl;
-        //iph->check = bpf_htons(new_checksum);
-
         __u32 arp_lookup_ip;
 
         if (route->is_direct == 1) {
@@ -204,8 +201,13 @@ int xdp_pass(struct xdp_md *ctx)
             return XDP_PASS;
         }
 
-        //__builtin_memcpy(eth->h_source, src_arp_val->mac, ETH_ALEN);
-        //__builtin_memcpy(eth->h_dest, dst_arp_val->mac, ETH_ALEN);
+        iph->ttl = ttl;
+        iph->check = bpf_htons(new_checksum);
+
+        __builtin_memcpy(eth->h_source, src_arp_val->mac, ETH_ALEN);
+        __builtin_memcpy(eth->h_dest, dst_arp_val->mac, ETH_ALEN);
+
+        return bpf_redirect(route->out_ifindex, 0);
     }
     return XDP_PASS;
 }
