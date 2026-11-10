@@ -19,28 +19,39 @@ The implementation runs in **generic XDP (SKB) mode** using Linux network namesp
 
 ## Architecture
 
-       labA                    labR                     labB
-    (Client)              (XDP Router)               (Server)
+The router is tested using three Linux network namespaces connected through two virtual Ethernet (veth) pairs.
 
-   test-left              router-left
-   10.0.1.2  <----------> 10.0.1.1
-                                |
-                                |
-                         XDP Forwarding
-                         - IPv4 parsing
-                         - LPM route lookup
-                         - ARP cache lookup
-                         - TTL/checksum update
-                         - Ethernet MAC rewrite
-                         - bpf_redirect()
-                                |
-                                |
-                          router-right             test-right
-                          10.0.2.1 <------------> 10.0.2.2
+```mermaid
+flowchart LR
+    subgraph A["labA - Client"]
+        LA["test-left<br/>10.0.1.2"]
+    end
 
-The XDP program is attached to both router interfaces, enabling bidirectional packet forwarding.
+    subgraph R["labR - XDP Router"]
+        RL["router-left<br/>10.0.1.1"]
+        XDP["XDP Fast Path<br/>IPv4 Parsing<br/>LPM Route Lookup<br/>ARP Lookup<br/>TTL and Checksum Update<br/>MAC Rewriting<br/>bpf_redirect"]
+        RR["router-right<br/>10.0.2.1"]
+        STACK["Linux Network Stack<br/>XDP_PASS"]
 
-The fast path handles valid IPv4 packets with known routing and destination MAC information. Packets that do not satisfy the forwarding conditions are handled according to the program's fallback or drop rules.
+        RL <--> XDP
+        XDP <--> RR
+        XDP -.->|"Fallback"| STACK
+    end
+
+    subgraph B["labB - Server"]
+        LB["test-right<br/>10.0.2.2"]
+    end
+
+    LA <-->|veth| RL
+    RR <-->|veth| LB
+```
+
+The XDP program is attached to both router interfaces, enabling bidirectional IPv4 forwarding.
+
+**Fast path:** Eligible packets undergo route lookup, ARP lookup, TTL and checksum updates, Ethernet MAC rewriting, and redirection through `bpf_redirect()`.
+
+**Slow path:** Traffic that cannot be handled by the fast path, including non-IPv4 packets, fragmented packets, and forwarding exceptions, is passed to the normal Linux network stack using `XDP_PASS`.
+
 
 ## Development Environment
 
