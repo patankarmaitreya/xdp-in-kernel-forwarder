@@ -6,6 +6,16 @@ The project explores Linux networking, eBPF maps, verifier-safe packet parsing, 
 
 The implementation runs in **generic XDP (SKB) mode** using Linux network namespaces and virtual Ethernet interfaces.
 
+## Related Project
+
+This project builds on my earlier [C++ Userspace Router Simulator](PASTE_CPP_ROUTER_GITHUB_URL_HERE).
+
+The original implementation explores IPv4 routing, longest-prefix matching, ARP handling, TTL processing, and ICMP behavior in userspace.
+
+The XDP implementation carries these routing concepts into the Linux kernel using eBPF maps, verifier-safe packet parsing, and kernel-level packet redirection.
+
+A direct performance comparison between the two implementations is planned as future work.
+
 ## Features
 
 - **IPv4 forwarding:** Bidirectional packet forwarding using `bpf_redirect()`.
@@ -19,39 +29,38 @@ The implementation runs in **generic XDP (SKB) mode** using Linux network namesp
 
 ## Architecture
 
-The router is tested using three Linux network namespaces connected through two virtual Ethernet (veth) pairs.
 
-```mermaid
-flowchart LR
-    subgraph A["labA - Client"]
-        LA["test-left<br/>10.0.1.2"]
-    end
+## Architecture
 
-    subgraph R["labR - XDP Router"]
-        RL["router-left<br/>10.0.1.1"]
-        XDP["XDP Fast Path<br/>IPv4 Parsing<br/>LPM Route Lookup<br/>ARP Lookup<br/>TTL and Checksum Update<br/>MAC Rewriting<br/>bpf_redirect"]
-        RR["router-right<br/>10.0.2.1"]
-        STACK["Linux Network Stack<br/>XDP_PASS"]
+The router uses three Linux network namespaces connected by two virtual Ethernet (veth) pairs.
 
-        RL <--> XDP
-        XDP <--> RR
-        XDP -.->|"Fallback"| STACK
-    end
-
-    subgraph B["labB - Server"]
-        LB["test-right<br/>10.0.2.2"]
-    end
-
-    LA <-->|veth| RL
-    RR <-->|veth| LB
+```text
+    labA                      labR                       labB
+   (Client)                (XDP Router)                 (Server)
+      |                         |                           |
+  test-left               router-left                     |
+  10.0.1.2 <------------> 10.0.1.1                        |
+            veth               |                           |
+                               |                           |
+                        XDP Forwarding                     |
+                        --------------                     |
+                        IPv4 Parsing                       |
+                        LPM Route Lookup                   |
+                        ARP Cache Lookup                   |
+                        TTL / Checksum                     |
+                        Ethernet MAC Rewrite              |
+                        bpf_redirect()                     |
+                               |                           |
+                          router-right                 test-right
+                          10.0.2.1 <-----------------> 10.0.2.2
+                                      veth
 ```
 
 The XDP program is attached to both router interfaces, enabling bidirectional IPv4 forwarding.
 
-**Fast path:** Eligible packets undergo route lookup, ARP lookup, TTL and checksum updates, Ethernet MAC rewriting, and redirection through `bpf_redirect()`.
+**Fast path:** Valid IPv4 packets with matching routes and known MAC addresses are forwarded using `bpf_redirect()`.
 
-**Slow path:** Traffic that cannot be handled by the fast path, including non-IPv4 packets, fragmented packets, and forwarding exceptions, is passed to the normal Linux network stack using `XDP_PASS`.
-
+**Slow path:** Packets that cannot be handled by the fast path are passed to the normal Linux network stack using `XDP_PASS`.
 
 ## Development Environment
 
