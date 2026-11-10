@@ -8,7 +8,7 @@ The implementation runs in **generic XDP (SKB) mode** using Linux network namesp
 
 ## Related Project
 
-This project builds on my earlier [C++ Userspace Router Simulator](PASTE_CPP_ROUTER_GITHUB_URL_HERE).
+This project builds on my earlier [C++ Userspace Router Simulator](https://github.com/patankarmaitreya/cpp-router-simulator).
 
 The original implementation explores IPv4 routing, longest-prefix matching, ARP handling, TTL processing, and ICMP behavior in userspace.
 
