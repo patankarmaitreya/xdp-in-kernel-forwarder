@@ -17,3 +17,20 @@ build/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Generated executables
+/route_loader
+/arp_helper
+
+# Generated routing configuration
+/routes.conf
+
+# Intermediate benchmark runs
+/benchmarks/xdp_1400/
+/benchmarks/xdp_1400_repeat/
+
+# Earlier CPU and iperf diagnostic logs
+/linux_cpu_1g*.txt
+/xdp_cpu_1g*.txt
+/linux_iperf_1g.txt
+/xdp_iperf_1g.txt

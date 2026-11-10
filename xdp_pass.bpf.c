@@ -6,6 +6,12 @@
 
 #include "route_types.h"
 
+#ifdef XDP_DEBUG
+#define XDP_LOG(...) bpf_printk(__VA_ARGS__)
+#else
+#define XDP_LOG(...) do { } while (0)
+#endif
+
 struct {
     __uint(type, BPF_MAP_TYPE_LPM_TRIE);
     __type(key, struct ipv4_route_key);
@@ -75,7 +81,7 @@ int xdp_pass(struct xdp_md *ctx)
         return XDP_PASS;
     }
 
-    bpf_printk("IPv4 EtherType: 0x%x", proto);
+    XDP_LOG("IPv4 EtherType: 0x%x", proto);
 
     struct iphdr *iph = (void *)(eth + 1);
 
@@ -93,15 +99,16 @@ int xdp_pass(struct xdp_md *ctx)
         return XDP_PASS;        
     }
 
-    bpf_printk("IPv4 ihl: %u", iph->ihl);
-    bpf_printk("IPv4 version: %u", iph->version);
+    XDP_LOG("IPv4 ihl: %u", iph->ihl);
+    XDP_LOG("IPv4 version: %u", iph->version);
 
     __u8 ttl = iph->ttl;    
     __u8 protocol = iph->protocol;    
 
+    #ifdef XDP_DEBUG
     __u32 src_ip = bpf_ntohl(iph->saddr);
     __u32 dst_ip = bpf_ntohl(iph->daddr);
-
+    #endif
     __u16 tot_len = bpf_ntohs(iph->tot_len);
 
     if(tot_len < ihl_bytes || (void *)((char *)iph + tot_len) > data_end){
@@ -114,15 +121,15 @@ int xdp_pass(struct xdp_md *ctx)
         return XDP_PASS;
     }
 
-    bpf_printk("IPv4 ttl: %u", ttl);
-    bpf_printk("IPv4 protocol: %u", protocol);
+    XDP_LOG("IPv4 ttl: %u", ttl);
+    XDP_LOG("IPv4 protocol: %u", protocol);
 
-    bpf_printk("IPv4 source ip: %x", src_ip);
-    bpf_printk("IPv4 destination ip: %x", dst_ip);
+    XDP_LOG("IPv4 source ip: %x", src_ip);
+    XDP_LOG("IPv4 destination ip: %x", dst_ip);
 
-    bpf_printk("IPv4 total length: %u", tot_len);
+    XDP_LOG("IPv4 total length: %u", tot_len);
 
-    bpf_printk("IPv4 unfragmented packet");
+    XDP_LOG("IPv4 unfragmented packet");
 
     __u32 local_ip = iph->daddr;
 
@@ -139,7 +146,7 @@ int xdp_pass(struct xdp_md *ctx)
     struct ipv4_route_value *route = bpf_map_lookup_elem(&routing_table, &key);
 
     if(route == NULL){
-        bpf_printk("Route is missing");
+        XDP_LOG("Route is missing");
 
         __u32 stat_key = ROUTE_MISS;
         __u64 *stat = bpf_map_lookup_elem(&route_stats, &stat_key);
@@ -149,7 +156,7 @@ int xdp_pass(struct xdp_md *ctx)
         }
     }
     else{
-        bpf_printk("Route hit, outgoing interfae is %u", route->out_ifindex);
+        XDP_LOG("Route hit, outgoing interfae is %u", route->out_ifindex);
 
         __u32 stat_key = ROUTE_HIT;
         __u64 *stat = bpf_map_lookup_elem(&route_stats, &stat_key);
@@ -170,8 +177,8 @@ int xdp_pass(struct xdp_md *ctx)
 
         __u16 new_checksum = update_checksum(old_checksum, old_word, new_word);
 
-        bpf_printk("TTL: %u -> %u", iph->ttl, ttl);
-        bpf_printk("Checksum: 0x%x -> 0x%x",old_checksum, new_checksum);
+        XDP_LOG("TTL: %u -> %u", iph->ttl, ttl);
+        XDP_LOG("Checksum: 0x%x -> 0x%x",old_checksum, new_checksum);
 
         __u32 arp_lookup_ip;
 
@@ -184,20 +191,20 @@ int xdp_pass(struct xdp_md *ctx)
         struct arp_entry  *dst_arp_val = bpf_map_lookup_elem(&arp_cache, &arp_lookup_ip);
 
         if(dst_arp_val != NULL){
-            bpf_printk("ARP cache hit");
+            XDP_LOG("ARP cache hit");
         }
         else{
-            bpf_printk("ARP cache miss");   
+            XDP_LOG("ARP cache miss");
             return XDP_PASS;
         }
         
         __u32 out_ifindex = route->out_ifindex; 
         struct arp_entry  *src_arp_val = bpf_map_lookup_elem(&interface_mac_map, &out_ifindex);
         if(src_arp_val != NULL){
-            bpf_printk("Interface MAC found");
+            XDP_LOG("Interface MAC found");
         }
         else{
-            bpf_printk("Interface MAC missing");   
+            XDP_LOG("Interface MAC missing");
             return XDP_PASS;
         }
 

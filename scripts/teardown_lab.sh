@@ -17,4 +17,9 @@ if ip netns list | grep -Eq '^labB([[:space:]]|$)'; then
     echo "Removed labB"
 fi
 
+if ip netns list | grep -Eq '^labR([[:space:]]|$)'; then
+    ip netns del labR
+    echo "Removed labR"
+fi
+
 echo "Lab teardown completed"

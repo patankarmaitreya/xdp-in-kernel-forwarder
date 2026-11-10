@@ -94,11 +94,26 @@ fi
 # Test 4: ARP cache miss
 echo "Test 4: ARP cache miss"
 
+# Save the original MAC before the ARP-miss test.
+original_mac=$(
+    "$BPFTOOL" -j map lookup pinned "$ARP_MAP" \
+        key hex 0a 00 02 02 |
+        python3 -c '
+import json
+import sys
+
+data = json.load(sys.stdin)
+print(" ".join(f"{int(b, 16):02x}" for b in data["value"]))
+'
+)
+
+read -r -a original_mac_bytes <<< "$original_mac"
+
 # Restore the ARP entry even if the script fails or is interrupted.
 restore_arp() {
     "$BPFTOOL" map update pinned "$ARP_MAP" \
         key hex 0a 00 02 02 \
-        value hex ce e5 27 b9 cf d5
+        value hex "${original_mac_bytes[@]}"
 }
 
 trap restore_arp EXIT
