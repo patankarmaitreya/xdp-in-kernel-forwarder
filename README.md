@@ -29,9 +29,6 @@ A direct performance comparison between the two implementations is planned as fu
 
 ## Architecture
 
-
-## Architecture
-
 The router uses three Linux network namespaces connected by two virtual Ethernet (veth) pairs.
 
 ```text
